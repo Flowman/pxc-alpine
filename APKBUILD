@@ -45,10 +45,9 @@ build() {
         local MYSQL_VERSION="$MYSQL_VERSION_MAJOR.$MYSQL_VERSION_MINOR.$MYSQL_VERSION_PATCH"
         local PERCONA_SERVER_EXTENSION="$(echo $MYSQL_VERSION_EXTRA | sed 's/^-/rel/')"
 
-        local WSREP_VERSION="$(grep WSREP_INTERFACE_VERSION wsrep/wsrep_api.h | cut -d '"' -f2).\
-        $(grep 'SET(WSREP_PATCH_VERSION'  "cmake/wsrep.cmake" | cut -d '"' -f2)"
+        local WSREP_VERSION="$(grep WSREP_INTERFACE_VERSION wsrep/wsrep_api.h | cut -d '"' -f2).$(grep 'SET(WSREP_PATCH_VERSION' "cmake/wsrep.cmake" | cut -d '"' -f2)"
 
-        local COMMENT="Percona XtraDB Cluster binary (GPL) $MYSQL_VERSION-1$WSREP_VERSION"
+        local COMMENT="Percona XtraDB Cluster binary (GPL) $MYSQL_VERSION-$WSREP_VERSION"
 
         local CFLAGS="-DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -DSIGEV_THREAD_ID=4 -U_FORTIFY_SOURCE"
         local CXXFLAGS="-DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -U_FORTIFY_SOURCE"
@@ -99,7 +98,7 @@ package() {
 
         install -Dm644 COPYING "$pkgdir"/usr/share/licenses/$pkgname/COPYING || return 1
 
-        install -Dm 640 -o mysql "$srcdir"/percona-xtradb-cluster.cnf \
+        install -Dm640 -o mysql "$srcdir"/percona-xtradb-cluster.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.cnf
 
         ln -s /etc/mysql/percona-xtradb-cluster.cnf \
@@ -107,16 +106,18 @@ package() {
 
         mkdir -p "$pkgdir"/etc/mysql/conf.d/ || return 1
 
-        install -Dm 640 -o mysql "$srcdir"/client.cnf \
+        install -Dm640 -o mysql "$srcdir"/client.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/client.cnf || return 1
-        install -Dm 640 -o mysql "$srcdir"/mysqld.cnf \
+        install -Dm640 -o mysql "$srcdir"/mysqld.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/mysqld.cnf || return 1
-        install -Dm 640 -o mysql "$srcdir"/mysqld_safe.cnf \
+        install -Dm640 -o mysql "$srcdir"/mysqld_safe.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/mysqld_safe.cnf || return 1
-        install -Dm 640 -o mysql "$srcdir"/wsrep.cnf \
+        install -Dm640 -o mysql "$srcdir"/wsrep.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/wsrep.cnf || return 1
 
-        install -dDo mysql "$pkgdir"/var/log/mysql || return 1
+        install -Dm750 -o mysql -d "$pkgdir"/var/log/mysql || return 1
+        install -Dm750 -o mysql -d "$pkgdir"/usr/lib/mysql || return 1
+        install -Dm750 -o mysql -d "$pkgdir"/run/mysqld || return 1
 
         # mysql-test includes one executable that doesn't belong under
         # /usr/share, so move it and provide a symlink

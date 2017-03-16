@@ -1,6 +1,7 @@
 # Template my.cnf for PXC
 # Edit to your requirements.
 [mysqld]
+user=mysql
 server-id=1
 datadir=/var/lib/mysql
 socket=/run/mysqld/mysqld.sock
