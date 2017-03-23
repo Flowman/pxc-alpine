@@ -25,7 +25,8 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
         wsrep.cnf
         "
 
-subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client $pkgname-server $pkgname-test:mytest
+subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client-libs:_client_libs
+        $pkgname-client $pkgname-server $pkgname-test:mytest
         mysql mysql-client:_compat_client mariadb-common:_compat_common"
 
 _builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
@@ -141,9 +142,6 @@ common() {
         "$subpkgdir"/etc \
         "$subpkgdir"/usr/lib/mysql/plugin
     mv "$pkgdir"/etc/mysql "$subpkgdir"/etc/ || return 1
-    mv "$pkgdir"/usr/lib/mysql/plugin/dialog.so \
-        "$pkgdir"/usr/lib/mysql/plugin/mysql_clear_password.so \
-        "$subpkgdir"/usr/lib/mysql/plugin/ || return 1
     local lang="charsets danish english french greek italian korean norwegian-ny
         portuguese russian slovak swedish czech dutch estonian german
         hungarian japanese norwegian polish romanian serbian spanish
@@ -152,6 +150,18 @@ common() {
         mv "$pkgdir"/usr/share/mysql/$l \
             "$subpkgdir"/usr/share/mysql/ || return 1
     done
+}
+
+_client_libs() {
+    pkgdesc="Percona XtraDB Cluster client library"
+    replaces="percona-xtradb-cluster libmysqlclient"
+    depends="$pkgname-common"
+    mkdir -p "$subpkgdir"/usr/lib \
+        "$subpkgdir"/usr/share/mysql \
+        || return 1
+    mv "$pkgdir"/usr/lib/libperconaserverclient.so* \
+        "$subpkgdir"/usr/lib/ \
+        || return 1
 }
 
 mytest() {
@@ -203,5 +213,5 @@ _compat() {
 
 mysql() { _compat mysql percona-xtradb-cluster; }
 _compat_client() { _compat mysql-client percona-xtradb-cluster-client; }
-_compat_comon() { _compat mariadb-common percona-xtradb-cluster-common; }
+_compat_common() { _compat mariadb-common percona-xtradb-cluster-common; }
 
