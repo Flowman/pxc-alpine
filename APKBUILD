@@ -26,8 +26,7 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
         "
 
 subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client-libs:_client_libs
-        $pkgname-client $pkgname-server $pkgname-test:mytest
-        mysql mysql-client:_compat_client mariadb-common:_compat_common"
+        $pkgname-client $pkgname-server $pkgname-test:mytest"
 
 _builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
 prepare() {
@@ -138,9 +137,14 @@ common() {
     pkgdesc="Percona XtraDB Cluster common files for both server and client"
     replaces="mysql-common mariadb-common"
     depends=
+    mv "$pkgdir"/var/log/mysql \
+        "$pkgdir"/usr/lib/mysql \
+        "$pkgdir"/run/mysqld \
+        "$subpkgdir"/ \
     mkdir -p "$subpkgdir"/usr/share/mysql \
         "$subpkgdir"/etc \
-        "$subpkgdir"/usr/lib/mysql/plugin
+        "$subpkgdir"/usr/lib/mysql/plugin \
+        || return 1
     mv "$pkgdir"/etc/mysql "$subpkgdir"/etc/ || return 1
     local lang="charsets danish english french greek italian korean norwegian-ny
         portuguese russian slovak swedish czech dutch estonian german
@@ -178,10 +182,10 @@ client() {
     pkgdesc="client for the Percona XtraDB Cluster database"
     depends="$pkgname-common"
     replaces="mysql-client mariadb-client"
+    mkdir -p "$subpkgdir"/usr/bin/ || return 1
     local bins="myisam_ftdump mysql mysqladmin
         mysqlcheck mysqldump mysqldumpslow
         mysqlimport mysqlshow mysqlslap mysql_config_editor"
-    mkdir -p "$subpkgdir"/usr/bin/ || return 1
     for i in $bins; do
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/ || return 1
     done
@@ -189,29 +193,20 @@ client() {
 
 server() {
     pkgdesc="server for the Percona XtraDB Cluster database"
-    depends="$pkgname-common $pkgname-galera percona-xtrabackup socat iproute2 procps findutils coreutils tzdata bash perl perl-dbd-mysql"
+    depends="$pkgname-common $pkgname-galera percona-xtrabackup socat iproute2
+        procps findutils coreutils tzdata bash perl perl-dbd-mysql"
     replaces="mariadb"
-    mkdir -p "$subpkgdir"/usr/lib/mysql/plugin
-    mv "$pkgdir"usr/lib/mysql/plugin/*.so
-        "$subpkgdir"/usr/lib/mysql/plugin/
+    mkdir -p "$subpkgdir"/usr/lib/mysql/plugin || return 1
+    mv "$pkgdir"/usr/lib/mysql/plugin/*.so \
+        "$subpkgdir"/usr/lib/mysql/plugin/ || return 1
     local bins="mysqld clustercheck pyclustercheck innochecksum my_print_defaults
         myisamchk myisamlog myisampack mysql_install_db mysql_secure_installation
         mysql_tzinfo_to_sql mysql_upgrade mysql_plugin mysqlbinlog mysqld_multi
         mysqld_safe mysqltest perror replace resolve_stack_dump resolveip
-        wsrep_sst_common wsrep_sst_mysqldump wsrep_sst_xtrabackup-v2 wsrep_sst_rsync"
+        wsrep_sst_common wsrep_sst_mysqldump wsrep_sst_xtrabackup-v2 wsrep_sst_rsync
+        mysql_ssl_rsa_setup"
     mkdir -p "$subpkgdir"/usr/bin/ || return 1
     for i in $bins; do
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/ || return 1
     done
 }
-
-_compat() {
-    pkgdesc="Dummy package for $1 migration"
-    depends="$2"
-    mkdir -p "$subpkgdir"
-}
-
-mysql() { _compat mysql percona-xtradb-cluster; }
-_compat_client() { _compat mysql-client percona-xtradb-cluster-client; }
-_compat_common() { _compat mariadb-common percona-xtradb-cluster-common; }
-
