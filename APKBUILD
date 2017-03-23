@@ -17,6 +17,7 @@ makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linu
 install="$pkgname.pre-install"
 source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pkgver.tar.gz
         fix-posix_timers.patch
+        fix-wsrep_sst_xtrabackup-v2.patch
         percona-xtradb-cluster.cnf
         mysqld.cnf
         mysqld_safe.cnf
@@ -163,6 +164,7 @@ mytest() {
         || return 1
 }
 
+<<<<<<< HEAD
 client() {
     pkgdesc="client for the Percona XtraDB Cluster database"
     depends="$pkgname-common"
@@ -194,6 +196,8 @@ server() {
     done
 }
 
+=======
+>>>>>>> origin/master
 md5sums="58f8524be1e25cc740cfa009d3e7c09c  Percona-XtraDB-Cluster-5.7.16-27.19.tar.gz
 bae0925c27db3c154b7749fe5737bd1d  fix-posix_timers.patch
 8c1516e62b6d6d1468f2c218d429ef28  fix-wsrep_sst_xtrabackup-v2.patch

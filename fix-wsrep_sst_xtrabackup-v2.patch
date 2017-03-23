@@ -1,0 +1,11 @@
+--- percona-xtradb-cluster-Percona-XtraDB-Cluster-5.7.16-27.19.org/scripts/wsrep_sst_xtrabackup-v2.sh
++++ percona-xtradb-cluster-Percona-XtraDB-Cluster-5.7.16-27.19/scripts/wsrep_sst_xtrabackup-v2.sh
+@@ -827,7 +827,7 @@
+         if timeout --help | grep -q -- '-k'; then
+             ltcmd="timeout -k $(( tmt+10 )) $tmt $tcmd"
+         else
+-            ltcmd="timeout -s9 $tmt $tcmd"
++            ltcmd="timeout -s9 -t $tmt $tcmd"
+         fi
+         timeit "$msg" "$ltcmd | $strmcmd; RC=( "\${PIPESTATUS[@]}" )"
+     else
