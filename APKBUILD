@@ -17,7 +17,6 @@ makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linu
 install="$pkgname.pre-install"
 source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pkgver.tar.gz
         fix-posix_timers.patch
-        fix-wsrep_sst_xtrabackup-v2.patch
         percona-xtradb-cluster.cnf
         mysqld.cnf
         mysqld_safe.cnf
