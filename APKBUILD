@@ -11,7 +11,7 @@ pkgusers="mysql"
 pkggroups="mysql"
 arch="all"
 license="GPL2"
-depends="$pkgname-common $pkgname-server $pkgname-galera percona-xtrabackup procps findutils coreutils socat iproute2 tzdata bash"
+depends="$pkgname-common $pkgname-server $pkgname-client"
 depends_dev="openssl-dev zlib-dev"
 makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linux-headers bison bsd-compat-headers"
 install="$pkgname.pre-install"
@@ -26,7 +26,7 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
         "
 
 subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client $pkgname-server $pkgname-test:mytest
-        "
+        mysql mysql-client:_compat_client mariadb-common:_compat_common"
 
 _builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
 prepare() {
@@ -179,7 +179,7 @@ client() {
 
 server() {
     pkgdesc="server for the Percona XtraDB Cluster database"
-    depends="$pkgname-common"
+    depends="$pkgname-common $pkgname-galera percona-xtrabackup socat iproute2 procps findutils coreutils tzdata bash perl perl-dbd-mysql"
     replaces="mariadb"
     mkdir -p "$subpkgdir"/usr/lib/mysql/plugin
     mv "$pkgdir"usr/lib/mysql/plugin/*.so
@@ -194,3 +194,14 @@ server() {
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/ || return 1
     done
 }
+
+_compat() {
+    pkgdesc="Dummy package for $1 migration"
+    depends="$2"
+    mkdir -p "$subpkgdir"
+}
+
+mysql() { _compat mysql percona-xtradb-cluster; }
+_compat_client() { _compat mysql-client percona-xtradb-cluster-client; }
+_compat_comon() { _compat mariadb-common percona-xtradb-cluster-common; }
+
