@@ -115,9 +115,8 @@ package() {
         install -Dm640 -o mysql "$srcdir"/wsrep.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/wsrep.cnf || return 1
 
-        install -Dm750 -o mysql -d "$pkgdir"/var/log/mysql || return 1
-        install -Dm750 -o mysql -d "$pkgdir"/usr/lib/mysql || return 1
-        install -Dm750 -o mysql -d "$pkgdir"/run/mysqld || return 1
+        # remove xinetd.d as alpine does not have it
+        rm -rf "$pkgdir"/usr/xinetd.d
 
         # mysql-test includes one executable that doesn't belong under
         # /usr/share, so move it and provide a symlink
@@ -128,8 +127,9 @@ package() {
 }
 
 doc() {
-    mkdir -p "$subpkgdir"/usr/share
+    mkdir -p "$subpkgdir"/usr/share/mysql
     mv "$pkgdir"/usr/share/man "$subpkgdir"/usr/share
+    mv "$pkgdir"/usr/share/mysql/docs "$subpkgdir"/usr/share/mysql
     default_doc
 }
 
@@ -137,10 +137,9 @@ common() {
     pkgdesc="Percona XtraDB Cluster common files for both server and client"
     replaces="mysql-common mariadb-common"
     depends=
-    mv "$pkgdir"/var/log/mysql \
-        "$pkgdir"/usr/lib/mysql \
-        "$pkgdir"/run/mysqld \
-        "$subpkgdir"/ \
+    install -Dm750 -o mysql -d "$subpkgdir"/var/log/mysql || return 1
+    install -Dm750 -o mysql -d "$subpkgdir"/usr/lib/mysql || return 1
+    install -Dm750 -o mysql -d "$subpkgdir"/run/mysqld || return 1
     mkdir -p "$subpkgdir"/usr/share/mysql \
         "$subpkgdir"/etc \
         "$subpkgdir"/usr/lib/mysql/plugin \
@@ -158,7 +157,7 @@ common() {
 
 _client_libs() {
     pkgdesc="Percona XtraDB Cluster client library"
-    replaces="percona-xtradb-cluster libmysqlclient"
+    replaces="percona-xtradb-cluster"
     depends="$pkgname-common"
     mkdir -p "$subpkgdir"/usr/lib \
         "$subpkgdir"/usr/share/mysql \
@@ -180,7 +179,7 @@ mytest() {
 
 client() {
     pkgdesc="client for the Percona XtraDB Cluster database"
-    depends="$pkgname-common"
+    depends="$pkgname-common perl-dbi"
     replaces="mysql-client mariadb-client"
     mkdir -p "$subpkgdir"/usr/bin/ || return 1
     local bins="myisam_ftdump mysql mysqladmin
@@ -194,7 +193,7 @@ client() {
 server() {
     pkgdesc="server for the Percona XtraDB Cluster database"
     depends="$pkgname-common $pkgname-galera percona-xtrabackup socat iproute2
-        procps findutils coreutils tzdata bash perl perl-dbd-mysql"
+        procps findutils coreutils tzdata bash perl-dbd-mysql"
     replaces="mariadb"
     mkdir -p "$subpkgdir"/usr/lib/mysql/plugin || return 1
     mv "$pkgdir"/usr/lib/mysql/plugin/*.so \
