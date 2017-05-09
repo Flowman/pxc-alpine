@@ -2,8 +2,8 @@
 # Maintainer: Peter Szalatnay <theotherland@gmail.com>
 pkgname=percona-xtradb-cluster
 _pkgname=Percona-XtraDB-Cluster
-pkgver=5.7.16
-_pkgver=5.7.16-27.19
+pkgver=5.7.17
+_pkgver="$pkgver-29.20"
 pkgrel=0
 pkgdesc="Percona XtraDB Cluster is an active/active high availability and high scalability open source solution for MySQL clustering"
 url="https://www.percona.com/software/mysql-database/percona-xtradb-cluster"
@@ -28,19 +28,10 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
 subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client-libs:_client_libs
         $pkgname-client $pkgname-server $pkgname-test:mytest"
 
-_builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
-prepare() {
-        local i
-        cd "$_builddir"
-        for i in $source; do
-                case $i in
-                *.patch) msg $i; patch -p1 -i "$srcdir"/$i || return 1;;
-                esac
-        done
-}
+builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
 
 build() {
-        cd "$_builddir"
+        cd "$builddir"
 
         source "VERSION"
         local MYSQL_VERSION="$MYSQL_VERSION_MAJOR.$MYSQL_VERSION_MINOR.$MYSQL_VERSION_PATCH"
@@ -50,8 +41,8 @@ build() {
 
         local COMMENT="Percona XtraDB Cluster binary (GPL) $MYSQL_VERSION-$WSREP_VERSION"
 
-        local CFLAGS="-DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -DSIGEV_THREAD_ID=4 -U_FORTIFY_SOURCE"
-        local CXXFLAGS="-DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -U_FORTIFY_SOURCE"
+        CFLAGS="$CFLAGS -DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -DSIGEV_THREAD_ID=4 -U_FORTIFY_SOURCE"
+        CXXFLAGS="$CXXFLAGS -DPERCONA_INNODB_VERSION=$PERCONA_SERVER_EXTENSION -U_FORTIFY_SOURCE"
 
         cmake . -DBUILD_CONFIG=mysql_release \
                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -79,7 +70,7 @@ build() {
                 -DMYSQL_SERVER_SUFFIX="-$WSREP_VERSION" \
                 -DWITH_INNODB_DISALLOW_WRITES=ON \
                 -DDOWNLOAD_BOOST=1 \
-                -DWITH_BOOST="$_builddir"/libboost \
+                -DWITH_BOOST="$builddir"/libboost \
                 -DWITH_WSREP=ON \
                 -DWITH_UNIT_TESTS=0 \
                 -DWITH_READLINE=system \
@@ -94,7 +85,7 @@ build() {
 }
 
 package() {
-        cd "$_builddir"
+        cd "$builddir"
         make DESTDIR="$pkgdir/" install || return 1
 
         install -Dm644 COPYING "$pkgdir"/usr/share/licenses/$pkgname/COPYING || return 1
@@ -115,7 +106,7 @@ package() {
         install -Dm640 -o mysql "$srcdir"/wsrep.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/wsrep.cnf || return 1
 
-        # remove xinetd.d as alpine does not have it
+        # remove xinetd.d as its not used in alpine
         rm -rf "$pkgdir"/usr/xinetd.d
 
         # mysql-test includes one executable that doesn't belong under
@@ -127,9 +118,8 @@ package() {
 }
 
 doc() {
-    mkdir -p "$subpkgdir"/usr/share/mysql
+    mkdir -p "$subpkgdir"/usr/share
     mv "$pkgdir"/usr/share/man "$subpkgdir"/usr/share
-    mv "$pkgdir"/usr/share/mysql/docs "$subpkgdir"/usr/share/mysql
     default_doc
 }
 
@@ -157,7 +147,7 @@ common() {
 
 _client_libs() {
     pkgdesc="Percona XtraDB Cluster client library"
-    replaces="percona-xtradb-cluster"
+    replaces="percona-xtradb-cluster libmysqlclient"
     depends="$pkgname-common"
     mkdir -p "$subpkgdir"/usr/lib \
         "$subpkgdir"/usr/share/mysql \
@@ -209,3 +199,4 @@ server() {
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/ || return 1
     done
 }
+
