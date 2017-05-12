@@ -13,7 +13,7 @@ arch="all"
 license="GPL2"
 depends="$pkgname-common $pkgname-server $pkgname-client"
 depends_dev="openssl-dev zlib-dev"
-makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linux-headers bison bsd-compat-headers"
+makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linux-headers bison bsd-compat-headers rpcgen portablexdr-dev"
 install="$pkgname.pre-install"
 source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pkgver.tar.gz
         fix-posix_timers.patch
