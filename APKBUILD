@@ -19,11 +19,9 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
         fix-posix_timers.patch
         my.cnf
         my.cnf.old
-        percona-xtradb-cluster.cnf
         mysqld.cnf
         mysqld_safe.cnf
         client.cnf
-        wsrep.cnf
         "
 
 subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client-libs:_client_libs
@@ -78,7 +76,7 @@ build() {
                 -DWITH_READLINE=system \
                 -DWITHOUT_TOKUDB=ON \
                 -DWITHOUT_ROCKSDB=ON \
-                -DWITH_KEYRING_VAULT=0 \
+                -DWITH_KEYRING_VAULT=OFF \
                 -DCOMPILATION_COMMENT="$COMMENT" \
                 -DWITH_PAM=OFF \
                 -DWITH_INNODB_MEMCACHED=ON \
@@ -99,11 +97,11 @@ package() {
         install -Dm644 COPYING "$pkgdir"/usr/share/licenses/$pkgname/COPYING
 
         # PXC ubuntu package include the mysql-common conf, but we do not want to use it as our default conf
-        install -Dm640 -o mysql "$srcdir"/my.cnf \
+        install -Dm640 -o mysql "$builddir"/build-ps/ubuntu/extra/percona-xtradb-cluster.cnf \
             "$pkgdir"/etc/mysql/my.cnf
         install -Dm640 -o mysql "$srcdir"/my.cnf.old \
             "$pkgdir"/etc/mysql/my.cnf.old
-        install -Dm640 -o mysql "$srcdir"/percona-xtradb-cluster.cnf \
+        install -Dm640 -o mysql "$builddir"/build-ps/ubuntu/extra/percona-xtradb-cluster.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.cnf
 
         mkdir -p "$pkgdir"/etc/mysql/conf.d/
@@ -114,11 +112,17 @@ package() {
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/mysqld.cnf
         install -Dm640 -o mysql "$srcdir"/mysqld_safe.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/mysqld_safe.cnf
-        install -Dm640 -o mysql "$srcdir"/wsrep.cnf \
+        install -Dm640 -o mysql "$builddir"/build-ps/ubuntu/extra/percona-xtradb-cluster.conf.d/wsrep.cnf \
             "$pkgdir"/etc/mysql/percona-xtradb-cluster.conf.d/wsrep.cnf
+
+        # fix init.d script
+        sed -i "s/. \/etc\/rc.d\/init.d\/functions/#. \/etc\/rc.d\/init.d\/functions/g" "$pkgdir"/usr/share/mysql/mysql.server
+        sed -i "s/action \$\"Initializing MySQL database: \" \/usr\/sbin\/mysqld --initialize --datadir=\"\$datadir\" --user=mysql/\/usr\/bin\/mysqld --initialize --datadir=\"\$datadir\" --user=mysql/g" "$pkgdir"/usr/share/mysql/mysql.server
 
         # remove xinetd.d as its not used in alpine
         rm -rf "$pkgdir"/usr/xinetd.d
+        # Remove files we explicitly do not want to package, avoids 'unpackaged files' warning.
+        rm -rf "$pkgdir"/usr/bin/ps_tokudb_admin "$pkgdir"/usr/bin/ps-admin
 
         # mysql-test includes one executable that doesn't belong under
         # /usr/share, so move it and provide a symlink
@@ -134,10 +138,22 @@ doc() {
     default_doc
 }
 
+dev() {
+    default_dev
+    replaces="libmysqlclient mysql-dev"
+    provides="mysql-dev=$pkgver-r$pkgrel"
+    local bins="mysql_config"
+    mkdir -p "$subpkgdir"/usr/bin
+    for i in $bins; do
+        mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/
+    done
+}
+
 common() {
     pkgdesc="Percona XtraDB Cluster common files for both server and client"
     replaces="mysql-common mariadb-common"
     depends=
+    install -Dm640 -o mysql /dev/null "$subpkgdir"/var/log/mysqld.log
     install -Dm750 -o mysql -d "$subpkgdir"/var/log/mysql
     install -Dm750 -o mysql -d "$subpkgdir"/usr/lib/mysql
     install -Dm750 -o mysql -d "$subpkgdir"/run/mysqld
@@ -169,6 +185,7 @@ mytest() {
     pkgdesc="The test suite distributed with Percona XtraDB Cluster"
     mkdir -p "$subpkgdir"/usr/bin
     mv "$pkgdir"/usr/bin/mysql_client_test \
+        "$pkgdir"/usr/bin/mysqlxtest \
         "$pkgdir"/usr/mysql-test \
         "$pkgdir"/usr/bin/my_safe_process \
         "$subpkgdir"/usr/bin/
@@ -181,7 +198,7 @@ client() {
     mkdir -p "$subpkgdir"/usr/bin/
     local bins="myisam_ftdump mysql mysqladmin
         mysqlcheck mysqldump mysqldumpslow
-        mysqlimport mysqlshow mysqlslap mysql_config_editor"
+        mysqlimport mysqlshow mysqlslap mysql_config_editor mysqlpump"
     for i in $bins; do
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/
     done
@@ -192,6 +209,10 @@ server() {
     depends="$pkgname-common $pkgname-galera percona-xtrabackup socat iproute2
         procps findutils coreutils tzdata bash perl-dbd-mysql"
     replaces="mariadb"
+    install -Dm755 "$pkgdir"/usr/share/mysql/mysql.server \
+        "$subpkgdir"/etc/init.d/mysql
+    install -Dm644 "$pkgdir"/usr/share/mysql/mysql-log-rotate \
+        "$subpkgdir"/etc/logrotate.d/mysql
     mkdir -p "$subpkgdir"/usr/lib/mysql/plugin
     mv "$pkgdir"/usr/lib/mysql/plugin/*.so \
         "$subpkgdir"/usr/lib/mysql/plugin/
@@ -200,10 +221,9 @@ server() {
         mysql_tzinfo_to_sql mysql_upgrade mysql_plugin mysqlbinlog mysqld_multi
         mysqld_safe mysqltest perror replace resolve_stack_dump resolveip
         wsrep_sst_common wsrep_sst_mysqldump wsrep_sst_xtrabackup-v2 wsrep_sst_rsync
-        mysql_ssl_rsa_setup"
+        mysql_ssl_rsa_setup lz4_decompress zlib_decompress ps_mysqld_helper"
     mkdir -p "$subpkgdir"/usr/bin/
     for i in $bins; do
         mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/
     done
 }
-

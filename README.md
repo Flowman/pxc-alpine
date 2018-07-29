@@ -2,6 +2,10 @@
 
 This is a temporary repo for testing PXC on Alpine.
 
+This will only compile and work with Alpine v3.6 as libressl-dev in later versions are not compatible with galera.
+
+Because of this PXC cannot be pushed to aport. Maybe when PXC starts using Mysql 8.0 bransh and supports libressl it will be possible.
+
 If you have any issues just report it.
 
 ## Install instructions
