@@ -1,9 +1,8 @@
 # Contributor: Peter Szalatnay <theotherland@gmail.com>
 # Maintainer: Peter Szalatnay <theotherland@gmail.com>
 pkgname=percona-xtradb-cluster
-_pkgname=Percona-XtraDB-Cluster
-pkgver=5.7.22
-_pkgver="$pkgver-29.26"
+pkgver=5.7.24
+_pkgver="$pkgver-31.33"
 pkgrel=0
 pkgdesc="Percona XtraDB Cluster is an active/active high availability and high scalability open source solution for MySQL clustering"
 url="https://www.percona.com/software/mysql-database/percona-xtradb-cluster"
@@ -15,7 +14,7 @@ depends="$pkgname-common $pkgname-server $pkgname-client"
 depends_dev="openssl-dev zlib-dev"
 makedepends="cmake openssl-dev zlib-dev readline-dev libaio-dev ncurses-dev linux-headers bison bsd-compat-headers rpcgen portablexdr-dev"
 install="$pkgname.pre-install"
-source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pkgver.tar.gz
+source="http://dev.alpinelinux.org/archive/$pkgname/$pkgname-$_pkgver.tar.gz
         fix-posix_timers.patch
         my.cnf
         my.cnf.old
@@ -24,10 +23,47 @@ source="https://github.com/percona/percona-xtradb-cluster/archive/$_pkgname-$_pk
         client.cnf
         "
 
+_giturl="https://github.com/percona/percona-xtradb-cluster.git"
+_gittag="Percona-XtraDB-Cluster-5.7.24-31.33"
+
 subpackages="$pkgname-doc $pkgname-dev $pkgname-common $pkgname-client-libs:_client_libs
         $pkgname-client $pkgname-server $pkgname-test:mytest"
 
-builddir="$srcdir/$pkgname-$_pkgname-$_pkgver"
+builddir="$srcdir/$pkgname"
+
+snapshot() {
+    mkdir -p "$srcdir"
+    cd "${SRCDEST:-$srcdir}"
+    if ! [ -d $pkgname ]; then
+        git clone --branch $_gittag --depth 1 $_giturl
+        cd $pkgname
+        git submodule init
+        git submodule update
+    else
+        cd $pkgname
+        git fetch
+        git submodule init
+        git submodule update
+    fi
+
+    export PKGNAME="$pkgname"
+    export PKGVER="$_pkgver"
+    export SRCDIR="$(pwd)"
+
+    git archive --prefix=$pkgname/ -o $pkgname-$_pkgver.tar $_gittag
+    git submodule foreach --recursive 'git archive --prefix=$PKGNAME/$path/ -o $SRCDIR/$PKGNAME-sub-$sha1.tar HEAD'
+
+    if [[ $(ls $pkgname-sub*.tar | wc -l) != 0 ]]; then
+      tar --concatenate --file $pkgname-$_pkgver.tar $pkgname-sub*.tar
+
+      rm -rf $pkgname-sub*.tar
+    fi
+
+    gzip $pkgname-$_pkgver.tar
+    mv $pkgname-$_pkgver.tar.gz "$SRCDEST"/
+
+    #scp "$SRCDEST"/$pkgname-$_pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
+}
 
 # Notes:
 # PXC require boost 1.59 or it will now compile, alpine edge uses boost 1.66 hence using the download flag
@@ -38,7 +74,7 @@ build() {
         local MYSQL_VERSION="$MYSQL_VERSION_MAJOR.$MYSQL_VERSION_MINOR.$MYSQL_VERSION_PATCH"
         local PERCONA_SERVER_EXTENSION="$(echo $MYSQL_VERSION_EXTRA | sed 's/^-/rel/')"
 
-        local WSREP_VERSION="$(grep WSREP_INTERFACE_VERSION wsrep/wsrep_api.h | cut -d '"' -f2).$(grep 'SET(WSREP_PATCH_VERSION' "cmake/wsrep.cmake" | cut -d '"' -f2)"
+        local WSREP_VERSION="$(grep WSREP_INTERFACE_VERSION wsrep/src/wsrep_api.h | cut -d '"' -f2).$(grep 'SET(WSREP_PATCH_VERSION' "cmake/wsrep.cmake" | cut -d '"' -f2)"
 
         local COMMENT="Percona XtraDB Cluster binary (GPL) $MYSQL_VERSION-$WSREP_VERSION"
 
