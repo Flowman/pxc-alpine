@@ -10,10 +10,16 @@ pkgusers="mysql"
 pkggroups="mysql"
 arch="all"
 license="GPL2"
+replaces="mariadb"
 depends="
 		$pkgname-common
-		$pkgname-server
-		$pkgname-client
+		socat
+		iproute2
+		procps
+		findutils
+		coreutils
+		tzdata
+		bash
 		"
 makedepends="
 		scons
@@ -36,9 +42,7 @@ subpackages="
 		$pkgname-doc
 		$pkgname-dev
 		$pkgname-common
-		$pkgname-client-libs:_client_libs
 		$pkgname-client
-		$pkgname-server
 		$pkgname-router
 		$pkgname-test:mytest
 		"
@@ -150,19 +154,23 @@ build() {
 	make
 }
 
-check() {
-	cd "$builddir"
-	make test
-}
-
 package() {
-	cd "$builddir"
+	depends="percona-xtrabackup"
+
 	make DESTDIR="$pkgdir/" install
 
-	install -Dm644 COPYING.innodb-deadlock-count-patch "$pkgdir"/usr/share/licenses/$pkgname/COPYING.innodb-deadlock-count-patch
-	install -Dm644 COPYING.show_temp_51 "$pkgdir"/usr/share/licenses/$pkgname/COPYING.show_temp_51
-	install -Dm644 "$pkgdir"/usr/LICENSE.router "$pkgdir"/usr/share/licenses/$pkgname/LICENSE.router
-	install -Dm644 "$pkgdir"/usr/README.router "$pkgdir"/usr/share/licenses/$pkgname/README.router
+	install -Dm755 "$pkgdir"/usr/share/mysql/mysql.server \
+		"$pkgdir"/etc/init.d/mysql
+	install -Dm644 "$pkgdir"/usr/share/mysql/mysql-log-rotate \
+		"$pkgdir"/etc/logrotate.d/mysql
+
+	install -Dm644 "$builddir"/COPYING.innodb-deadlock-count-patch \
+		"$pkgdir"/usr/share/licenses/$pkgname/COPYING.innodb-deadlock-count-patch
+	install -Dm644 "$builddir"/COPYING.show_temp_51 \
+		"$pkgdir"/usr/share/licenses/$pkgname/COPYING.show_temp_51
+	mv "$pkgdir"/usr/LICENSE.router \
+		"$pkgdir"/usr/README.router \
+		"$pkgdir"/usr/share/licenses/$pkgname/
 
 	install -Dm755 "$builddir"/percona-xtradb-cluster-galera/libgalera_smm.so \
 		"$pkgdir"/usr/lib/galera4/libgalera_smm.so
@@ -192,14 +200,17 @@ package() {
 	sed -i "s/. \/etc\/rc.d\/init.d\/functions/#. \/etc\/rc.d\/init.d\/functions/g" "$pkgdir"/usr/share/mysql/mysql.server
 	sed -i "s/action \$\"Initializing MySQL database: \" \/usr\/sbin\/mysqld --initialize --datadir=\"\$datadir\" --user=mysql/\/usr\/bin\/mysqld --initialize --datadir=\"\$datadir\" --user=mysql/g" "$pkgdir"/usr/share/mysql/mysql.server
 
-	# Remove files we explicitly do not want to package, avoids 'unpackaged files' warning.
-	rm -rf "$pkgdir"/usr/var/ "$pkgdir"/usr/bin/ps-admin
-}
+	# Remove files that exists in xtrabackup package and will conflict
+	rm \
+		"$pkgdir"/usr/lib/private/libprotobuf-lite.so.3.11.4 \
+		"$pkgdir"/usr/lib/private/libprotobuf.so.3.11.4
 
-doc() {
-	mkdir -p "$subpkgdir"/usr/share
-	mv "$pkgdir"/usr/share/man "$subpkgdir"/usr/share
-	default_doc
+	# Remove files we explicitly do not want to package, avoids 'unpackaged files' warning.
+	rm -rf \
+		"$pkgdir"/usr/var/ \
+		"$pkgdir"/usr/lib/private \
+		"$pkgdir"/usr/bin/ps-admin \
+		"$pkgdir"/usr/lib/libperconaserverclient.so*
 }
 
 dev() {
@@ -234,29 +245,21 @@ common() {
 	done
 }
 
-_client_libs() {
-	pkgdesc="Percona XtraDB Cluster client library"
-	replaces="percona-xtradb-cluster libmysqlclient"
-	depends="$pkgname-common"
-	mkdir -p "$subpkgdir"/usr/lib
-	mv "$pkgdir"/usr/lib/libperconaserverclient.so* \
-		"$subpkgdir"/usr/lib/
-}
-
 mytest() {
 	pkgdesc="The test suite distributed with Percona XtraDB Cluster"
 	mkdir -p "$subpkgdir"/usr/bin
 	mv "$pkgdir"/usr/bin/mysql_client_test \
 		"$pkgdir"/usr/bin/mysqlxtest \
 		"$pkgdir"/usr/bin/mysqltest \
-		"$pkgdir"/usr/mysql-test \
 		"$pkgdir"/usr/bin/mysqltest_safe_process \
 		"$subpkgdir"/usr/bin/
+	mv "$pkgdir"/usr/mysql-test \
+		"$subpkgdir"/usr/
 }
 
 client() {
 	pkgdesc="client for the Percona XtraDB Cluster database"
-	depends="$pkgname-common perl-dbi"
+	depends="$pkgname-common"
 	replaces="mysql-client mariadb-client"
 	mkdir -p "$subpkgdir"/usr/bin/
 	local bins="myisam_ftdump mysql mysqladmin
@@ -267,36 +270,9 @@ client() {
 	done
 }
 
-server() {
-	pkgdesc="server for the Percona XtraDB Cluster database"
-	depends="$pkgname-common percona-xtrabackup socat iproute2
-		procps findutils coreutils tzdata bash perl-dbd-mysql"
-	replaces="mariadb"
-	install -Dm755 "$pkgdir"/usr/share/mysql/mysql.server \
-		"$subpkgdir"/etc/init.d/mysql
-	install -Dm644 "$pkgdir"/usr/share/mysql/mysql-log-rotate \
-		"$subpkgdir"/etc/logrotate.d/mysql
-	mkdir -p "$subpkgdir"/usr/lib/mysql/plugin
-	mv "$pkgdir"/usr/lib/mysql/plugin/*.so \
-		"$subpkgdir"/usr/lib/mysql/plugin/
-	mv "$pkgdir"/usr/lib/private/ \
-		"$pkgdir"/usr/lib/galera4/ \
-		"$subpkgdir"/usr/lib/
-	local bins="comp_err mysql_ssl_rsa_setup lz4_decompress zlib_decompress
-		ps_mysqld_helper mysql_upgrade ibd2sdi clustercheck pyclustercheck
-		innochecksum my_print_defaults myisamchk myisamlog myisampack
-		mysql_secure_installation mysql_tzinfo_to_sql mysqlbinlog
-		mysqld_multi mysqld_safe perror wsrep_sst_common
-		wsrep_sst_xtrabackup-v2 mysqld garbd"
-	mkdir -p "$subpkgdir"/usr/bin/
-	for i in $bins; do
-		mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/
-	done
-}
-
 router() {
 	pkgdesc="router for the Percona XtraDB Cluster database"
-	depends="$pkgname-server"
+	depends="$pkgname"
 	mkdir -p "$subpkgdir"/usr/lib/mysqlrouter/plugin/ \
 		"$subpkgdir"/usr/lib/mysqlrouter/private/ \
 		"$subpkgdir"/etc/mysqlrouter/
@@ -314,4 +290,8 @@ router() {
 	for i in $bins; do
 		mv "$pkgdir"/usr/bin/${i} "$subpkgdir"/usr/bin/
 	done
+	rm -rf \
+		"$pkgdir"/usr/lib/mysqlrouter \
+		"$pkgdir"/var/lib/mysqlrouter \
+		"$pkgdir"/usr/share/mysql/docs/sample_mysqlrouter.conf
 }
