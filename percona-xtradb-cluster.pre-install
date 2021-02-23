@@ -3,4 +3,7 @@
 addgroup -S mysql 2>/dev/null
 adduser -S -D -h /var/lib/mysql -s /sbin/nologin -G mysql -g mysql mysql 2>/dev/null
 
+addgroup -S mysqlrouter 2>/dev/null
+adduser -S -D -h /var/lib/mysqlrouter -s /sbin/nologin -G mysqlrouter -g mysqlrouter mysqlrouter 2>/dev/null
+
 exit 0

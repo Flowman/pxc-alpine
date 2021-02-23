@@ -1,0 +1,37 @@
+--- a/extra/coredumper/src/linux_syscall_support.h
++++ b/extra/coredumper/src/linux_syscall_support.h
+@@ -2067,7 +2067,7 @@
+     _syscall4(int, socketpair, int, d, int, t, int, p, int *, s)
+ #endif
+ #if defined(__x86_64__)
+-        LSS_INLINE _syscall6(void *, mmap, void *, s, size_t, l, int, p, int, f, int, d, __off64_t, o) LSS_INLINE
++        LSS_INLINE _syscall6(void *, mmap, void *, s, size_t, l, int, p, int, f, int, d, off64_t, o) LSS_INLINE
+     _syscall4(int, newfstatat, int, d, const char *, p, struct kernel_stat *, b, int, f)
+
+         LSS_INLINE int LSS_NAME(setfsgid32)(gid_t gid) {
+@@ -2229,7 +2229,7 @@
+ LSS_INLINE _syscall2(int, fstat64, int, f, struct kernel_stat64 *, b) LSS_INLINE
+     _syscall5(int, _llseek, uint, fd, ulong, hi, ulong, lo, loff_t *, res, uint, wh) LSS_INLINE
+     _syscall1(void *, mmap, void *, a) LSS_INLINE
+-    _syscall6(void *, mmap2, void *, s, size_t, l, int, p, int, f, int, d, __off64_t, o) LSS_INLINE
++    _syscall6(void *, mmap2, void *, s, size_t, l, int, p, int, f, int, d, off64_t, o) LSS_INLINE
+     _syscall3(int, _sigaction, int, s, const struct kernel_old_sigaction *, a, struct kernel_old_sigaction *,
+               o) LSS_INLINE _syscall1(int, _sigpending, unsigned long *, s) LSS_INLINE
+     _syscall3(int, _sigprocmask, int, h, const unsigned long *, s, unsigned long *, o)
+@@ -2536,14 +2536,14 @@
+ LSS_INLINE int LSS_NAME(setpgrp)() { return LSS_NAME(setpgid)(0, 0); }
+
+ LSS_INLINE int LSS_NAME(sysconf)(int name) {
+-  extern int __getpagesize(void);
++  extern int getpagesize(void);
+   switch (name) {
+     case _SC_OPEN_MAX: {
+       struct kernel_rlimit limit;
+       return LSS_NAME(getrlimit)(RLIMIT_NOFILE, &limit) < 0 ? 8192 : limit.rlim_cur;
+     }
+     case _SC_PAGESIZE:
+-      return __getpagesize();
++      return getpagesize();
+     default:
+       errno = ENOSYS;
+       return -1;

@@ -1,0 +1,15 @@
+--- a/sql/signal_handler.cc
++++ b/sql/signal_handler.cc
+@@ -126,9 +126,9 @@
+       "be caused by malfunctioning hardware.\n");
+
+   my_safe_printf_stderr("\n");
+-#ifdef __linux__
+-  my_print_buildID();
+-#endif
++//#ifdef __linux__
++//  my_print_buildID();
++//#endif
+   my_safe_printf_stderr("Server Version: %s %s\n\n", server_version,
+                         MYSQL_COMPILATION_COMMENT);
+
